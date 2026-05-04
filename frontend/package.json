@@ -1,17 +1,3 @@
-Unexpected token 'B', "Bad contro"... is not valid JSON
-That means the first characters of your package.json right now are:
-
-Bad control character in string literal in JSON...
-instead of {.
-
-Fix it now (step by step)
-Open this file in a text editor (Notepad, VS Code, etc.):
-
-D:\TeraBoxDownload\Telegram\MUL-Salary-Emergent-main\Temp\Salary-Management\frontend\package.json
-Press Ctrl + A to select everything, then Delete. The file must be completely empty.
-
-Paste only the JSON below (starts with {, ends with }). Do not paste anything else, no quotes around it, no error messages, no > markers — just this:
-
 {
   "name": "frontend",
   "version": "0.1.0",
