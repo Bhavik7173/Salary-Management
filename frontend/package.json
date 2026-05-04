@@ -61,7 +61,8 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
+    "postinstall": "mkdir -p node_modules/ajv-formats/node_modules/ajv/dist/compile && cp -r node_modules/ajv/dist/compile/. node_modules/ajv-formats/node_modules/ajv/dist/compile/ 2>/dev/null || true && mkdir -p node_modules/terser-webpack-plugin/node_modules/ajv/dist/compile && cp -r node_modules/ajv/dist/compile/. node_modules/terser-webpack-plugin/node_modules/ajv/dist/compile/ 2>/dev/null || true"
   },
   "browserslist": {
     "production": [
@@ -90,11 +91,6 @@
     "tailwindcss": "^3.4.17"
   },
   "resolutions": {
-    "ajv": "6.12.6",
-    "ajv-formats": "2.1.1",
-    "ajv-keywords": "3.5.2"
-  },
-  "overrides": {
     "ajv": "6.12.6",
     "ajv-formats": "2.1.1",
     "ajv-keywords": "3.5.2"
