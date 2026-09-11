@@ -1,14 +1,12 @@
 import requests
-import os
 import sys
 import json
 from datetime import datetime, date
 from typing import Dict, Any
 
 class MULSalaryTrackerTester:
-    def __init__(self, base_url=None):
-        self.base_url = base_url or os.environ.get("BACKEND_URL", "http://localhost:8000")
-        self.admin_key = os.environ.get("ADMIN_API_KEY", "")
+    def __init__(self, base_url="https://free-hosting-hub-2.preview.emergentagent.com"):
+        self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
         self.created_entry_id = None
@@ -34,8 +32,6 @@ class MULSalaryTrackerTester:
         """Run a single API test"""
         url = f"{self.base_url}/api/{endpoint}"
         headers = {'Content-Type': 'application/json'} if not files else {}
-        if self.admin_key:
-            headers['X-Admin-Key'] = self.admin_key
 
         try:
             if method == 'GET':
