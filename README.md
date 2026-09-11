@@ -30,7 +30,7 @@ A full-stack salary and work-hours management application for recording daily sh
 ### Requirements
 
 - Python 3.11
-- Node.js 18 or later
+- Node.js 20 or later
 - MongoDB
 
 ### Backend
