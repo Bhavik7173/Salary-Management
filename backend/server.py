@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Header, Depends
 from fastapi.responses import FileResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
+import secrets
 from datetime import datetime, timezone, date
 import io
 import pandas as pd
@@ -36,6 +37,17 @@ app = FastAPI(title="MUL Salary Tracker API")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+
+ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+async def require_admin_key(x_admin_key: Optional[str] = Header(default=None)):
+    """Protect administrative operations with a server-configured key."""
+    if not ADMIN_API_KEY:
+        raise HTTPException(status_code=503, detail="Administrative API is not configured")
+    if not x_admin_key or not secrets.compare_digest(x_admin_key, ADMIN_API_KEY):
+        raise HTTPException(status_code=401, detail="Invalid or missing administrative key")
+
 
 # Constants
 DEFAULT_HOURLY_RATE      = 14.96
@@ -96,7 +108,7 @@ class Settings(BaseModel):
     company_name: str = "MUL Company"
     company_logo: Optional[str] = None
     email_address: str = ""
-    email_password: str = ""
+    email_password: str = Field(default="", exclude=True)
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
     auto_email_day: int = 1
@@ -828,7 +840,7 @@ async def generate_annual_pdf(year: int):
 
 # ============= EMAIL AUTO-SEND =============
 
-@api_router.post("/email/auto-send")
+@api_router.post("/email/auto-send", dependencies=[Depends(require_admin_key)])
 async def auto_send_payslip():
     """Send last month's payslip if today matches auto_email_day."""
     settings = await get_settings()
@@ -874,13 +886,13 @@ async def auto_send_payslip():
 
 # ============= DATABASE RESET TOOLS =============
 
-@api_router.delete("/entries/all")
+@api_router.delete("/entries/all", dependencies=[Depends(require_admin_key)])
 async def delete_all_entries():
     """Delete ALL work entries. Use when old corrupted data needs to be wiped."""
     result = await db.work_entries.delete_many({})
     return {"message": f"Deleted {result.deleted_count} entries. Database is now clean."}
 
-@api_router.delete("/entries/before/{year}/{month}")
+@api_router.delete("/entries/before/{year}/{month}", dependencies=[Depends(require_admin_key)])
 async def delete_entries_before(year: int, month: int):
     """Delete all entries strictly before the given year/month.
     Useful to wipe only old corrupted months while keeping recent correct data.
@@ -959,7 +971,7 @@ async def debug_azk_breakdown():
 
 # ============= RECALCULATE ALL ENTRIES =============
 
-@api_router.post("/recalculate-all")
+@api_router.post("/recalculate-all", dependencies=[Depends(require_admin_key)])
 async def recalculate_all_entries():
     """Recalculate working_hours and all pay fields for every stored entry.
 
@@ -993,7 +1005,7 @@ async def get_app_settings():
     """Get application settings."""
     return await get_settings()
 
-@api_router.put("/settings", response_model=Settings)
+@api_router.put("/settings", response_model=Settings, dependencies=[Depends(require_admin_key)])
 async def update_settings(update: SettingsUpdate):
     """Update application settings."""
     settings = await get_settings()
@@ -1027,7 +1039,9 @@ async def update_settings(update: SettingsUpdate):
 async def upload_file(file: UploadFile = File(...)):
     """Upload CSV or Excel file and parse entries."""
     try:
-        contents = await file.read()
+        contents = await file.read(MAX_UPLOAD_BYTES + 1)
+        if len(contents) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File exceeds the 5 MB upload limit")
         
         # Determine file type
         if file.filename.endswith('.csv'):
@@ -1312,7 +1326,7 @@ async def export_to_excel(year: int, month: int):
 
 # ============= EMAIL ROUTES =============
 
-@api_router.post("/email/send")
+@api_router.post("/email/send", dependencies=[Depends(require_admin_key)])
 async def send_email_with_payslip(request: EmailRequest):
     """Send email with PDF payslip attachment."""
     settings = await get_settings()
@@ -1403,7 +1417,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
